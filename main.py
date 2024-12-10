@@ -1,3 +1,6 @@
+# Copyright 2024, Jstyles
+# SPDX-License-Identifier: MIT
+
 import os
 from datetime import datetime, time, timedelta
 
