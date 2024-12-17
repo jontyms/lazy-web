@@ -9,6 +9,9 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from homeassistant_api import Client
+from feedgenerator import Rss201rev2Feed
+from fastapi_utils.tasks import repeat_every
+import pickle
 
 
 def is_night_time():
@@ -27,6 +30,8 @@ class StateManager:
     def __init__(self):
         self.data = None
         self.last_update = None
+        self.last_state = None
+        self.last_sleep_state = None
 
     def update_data(self, client):
         current_state = client.get_entity(
@@ -54,6 +59,10 @@ class StateManager:
             "time": datetime.now(),
             "sleep": sleep,
         }
+        if (self.last_state != state) or (self.last_sleep_state != sleep):
+            update_rss_feed(self.data)
+        self.last_state = state
+        self.last_sleep_state = sleep
         return self.data
 
     def get_data(self, client, force_update=False):
@@ -122,6 +131,46 @@ def round_to_minute(dt):
     )
 
 
+def update_rss_feed(data):
+    status = (
+        "sleeping"
+        if data["sleep"]
+        else "in bed"
+        if data["state"]
+        else "not in bed"
+    )
+    title = f"Jstyles is {status}"
+    description = f"Jstyles is currently {status}. They've been in bed for {format_timedelta(data['lazy_time'])}."
+    add_item_to_feed(title, description, "http://lazy.styl.dev")
+
+
+def add_item_to_feed(title, description, link, feed_path="./static/feed.xml"):
+    # Create a new RSS feed
+    #
+    try:
+        with open("feed.obj", "rb") as f:
+            feed = pickle.load(f)
+    except OSError:
+        feed = Rss201rev2Feed(
+            title="Is Jstyles being lazy?",
+            link="http://lazy.styl.dev",
+            description="Is Jstyles being lazy?",
+            language="en",
+        )
+
+    # Add new item
+    feed.add_item(
+        title=title, description=description, link=link, pubdate=datetime.now()
+    )
+
+    # Write the feed to a file
+    with open(feed_path, "w") as f:
+        feed.write(f, "utf-8")
+
+    with open("feed.obj", "wb") as f:
+        pickle.dump(feed, f)
+
+
 app = FastAPI()
 
 api_url = os.getenv("HOMEASSISTANT_URL")
@@ -146,7 +195,7 @@ async def read_root(request: Request):
             "request": request,
             "last_updated": round_to_minute(data["time"]),
             "time_in_bed": format_timedelta(data["lazy_time"]),
-            "in_bed": data["state"],
+            "in_bed": True,
             "sleep": data["sleep"],
         },
     )
@@ -160,3 +209,9 @@ async def read_about(request: Request):
             "request": request,
         },
     )
+
+
+@app.on_event("startup")
+@repeat_every(seconds=240)
+def update_rss() -> None:
+    data = state_manager.get_data(client)

@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "lazy-web"
+version = "0.1.0"
+description = ""
+authors = ["Jonathan Styles <github@jontyms.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.13"
+fastapi = {extras = ["standard"], version = "^0.115.6"}
+feedgenerator = "^2.1.0"
+fastapi-utils = "^0.8.0"
+typing-inspect = "^0.9.0"
+homeassistant-api = "^4.2.2.post2"
+uvicorn = "^0.34.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
