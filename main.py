@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 import os
+import uuid
 from datetime import datetime, time, timedelta
 
 from fastapi import FastAPI, Request
@@ -12,8 +13,6 @@ from homeassistant_api import Client
 from feedgenerator import Rss201rev2Feed
 from fastapi_utils.tasks import repeat_every
 import pickle
-
-from pydantic.types import UUID4
 
 
 def is_night_time():
@@ -161,7 +160,7 @@ def add_item_to_feed(title, description, link, feed_path="./static/feed.xml"):
             link="http://lazy.styl.dev",
             description="Is Jstyles being lazy?",
             language="en",
-            feed_guid=UUID4,
+            feed_guid=uuid.uuid4(),
         )
 
     # Add new item
@@ -170,7 +169,7 @@ def add_item_to_feed(title, description, link, feed_path="./static/feed.xml"):
         description=description,
         link=link,
         pubdate=datetime.now(),
-        unique_id=UUID4,
+        unique_id=uuid.uuid4(),
     )
 
     # Write the feed to a file
