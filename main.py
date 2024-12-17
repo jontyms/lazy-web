@@ -13,6 +13,8 @@ from feedgenerator import Rss201rev2Feed
 from fastapi_utils.tasks import repeat_every
 import pickle
 
+from pydantic.types import UUID4
+
 
 def is_night_time():
     now = datetime.now().time()
@@ -159,11 +161,16 @@ def add_item_to_feed(title, description, link, feed_path="./static/feed.xml"):
             link="http://lazy.styl.dev",
             description="Is Jstyles being lazy?",
             language="en",
+            feed_guid=UUID4,
         )
 
     # Add new item
     feed.add_item(
-        title=title, description=description, link=link, pubdate=datetime.now()
+        title=title,
+        description=description,
+        link=link,
+        pubdate=datetime.now(),
+        unique_id=UUID4,
     )
 
     # Write the feed to a file
