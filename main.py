@@ -61,8 +61,7 @@ class StateManager:
         }
         if (self.last_state != state) or (self.last_sleep_state != sleep):
             update_rss_feed(self.data)
-        self.last_state = state
-        self.last_sleep_state = sleep
+
         return self.data
 
     def get_data(self, client, force_update=False):
