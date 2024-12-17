@@ -43,10 +43,12 @@ class StateManager:
         pixel_state = client.get_entity(
             entity_id="binary_sensor.pixel_6a_interactive"
         )
+        print(current_state.state.state)
         if current_state.state.state == "off":
             state = False
         elif current_state.state.state == "on":
             state = True
+
         else:
             state = None
         if pixel_state.state.state == "off" and is_night_time() and state:
@@ -59,9 +61,11 @@ class StateManager:
             "time": datetime.now(),
             "sleep": sleep,
         }
+        print(self.data)
         if (self.last_state != state) or (self.last_sleep_state != sleep):
             update_rss_feed(self.data)
-
+            self.last_sleep_state = sleep
+            self.last_state = state
         return self.data
 
     def get_data(self, client, force_update=False):
@@ -194,7 +198,7 @@ async def read_root(request: Request):
             "request": request,
             "last_updated": round_to_minute(data["time"]),
             "time_in_bed": format_timedelta(data["lazy_time"]),
-            "in_bed": True,
+            "in_bed": data["state"],
             "sleep": data["sleep"],
         },
     )
