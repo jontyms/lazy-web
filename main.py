@@ -4,12 +4,15 @@
 import os
 import uuid
 from datetime import datetime, time, timedelta
+import logging
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from homeassistant_api import Client
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from homeassistant_api import Client, errors
 from feedgenerator import Rss201rev2Feed
 from fastapi_utils.tasks import repeat_every
 import pickle
@@ -44,7 +47,7 @@ class StateManager:
         pixel_state = client.get_entity(
             entity_id="binary_sensor.pixel_6a_interactive"
         )
-        print(current_state.state.state)
+        logger.debug(current_state.state.state)
         if current_state.state.state == "off":
             state = False
         elif current_state.state.state == "on":
@@ -62,7 +65,7 @@ class StateManager:
             "time": datetime.now(),
             "sleep": sleep,
         }
-        print(self.data)
+        logger.debug(self.data)
         if (self.last_state != state) or (self.last_sleep_state != sleep):
             update_rss_feed(self.data)
             self.last_sleep_state = sleep
@@ -185,6 +188,7 @@ app = FastAPI()
 api_url = os.getenv("HOMEASSISTANT_URL")
 token = os.getenv("HOMEASSISTANT_TOKEN")
 
+logger = logging.getLogger("uvicorn")
 
 client = Client(api_url, token, cache_session=False)
 state_manager = StateManager()
@@ -195,9 +199,50 @@ templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    if exc.status_code == 404:
+        return templates.TemplateResponse(
+            "error.html.j2",
+            {
+                "request": request,
+                "error_code": 404,
+                "message": "File not Found",
+            },
+            status_code=404,
+        )
+    return templates.TemplateResponse(
+        "error.html.j2",
+        {
+            "request": request,
+            "error_code": exc.status_code,
+            "message": "Error Occurred",
+        },
+        status_code=exc.status_code,
+    )
+
+
+# Custom exception handler for 500 errors
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    return templates.TemplateResponse(
+        "error.html.j2",
+        {
+            "request": request,
+            "error_code": 500,
+            "message": "Internal Server Error",
+        },
+        status_code=500,
+    )
+
+
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
-    data = state_manager.get_data(client)
+    try:
+        data = state_manager.get_data(client)
+    except errors.HomeassistantAPIError:
+        logger.exception("Issue connecting to HA")
+        raise Exception("Issue connecting to HA")
     return templates.TemplateResponse(
         "index.html.j2",
         {
@@ -223,4 +268,8 @@ async def read_about(request: Request):
 @app.on_event("startup")
 @repeat_every(seconds=240)
 def update_rss() -> None:
-    data = state_manager.get_data(client)
+    try:
+        data = state_manager.get_data(client)
+    except errors.HomeAssistantError:
+        logger.exception("Issue connecting to HA")
+        raise Exception("Issue connecting to HA")
