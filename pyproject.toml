@@ -15,6 +15,22 @@ homeassistant-api = "^4.2.2.post2"
 uvicorn = "^0.34.0"
 
 
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+
+
+[project]
+authors = [
+    {name = "Jonathan Styles", email = "github@jontyms.com"},
+]
+requires-python = "<4.0,>=3.12"
+dependencies = [
+    "fastapi[standard]<1.0.0,>=0.115.6",
+    "feedgenerator<3.0.0,>=2.1.0",
+    "fastapi-utils<1.0.0,>=0.8.0",
+    "typing-inspect<1.0.0,>=0.9.0",
+    "homeassistant-api<5.0.0.0,>=4.2.2.post2",
+    "uvicorn<1.0.0,>=0.34.0",
+]
+name = "lazy-web"
+version = "0.1.0"
+description = ""
+readme = "README.md"

@@ -45,7 +45,7 @@ class StateManager:
             client.get_entity(entity_id="sensor.lazy_counter").state.state
         )
         pixel_state = client.get_entity(
-            entity_id="binary_sensor.pixel_6a_interactive"
+            entity_id="binary_sensor.jonty_pixel_9_interactive"
         )
         logger.debug(current_state.state.state)
         if current_state.state.state == "off":
